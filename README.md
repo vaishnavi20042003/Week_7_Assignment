@@ -1,190 +1,121 @@
-# 📁 Daily Truncate Load Pipeline – Data Lake File Ingestion
+📊 Daily File Ingestion Pipeline – Data Lake to SQL Workflow
+This repository defines a structured data ingestion pipeline designed to process daily CSV files from a Data Lake container and load them into dedicated SQL tables following a truncate-and-load strategy.
 
-This repository describes a data ingestion pipeline for processing three types of CSV files from a Data Lake container and loading them into respective SQL tables on a **daily truncate and load** basis.
+📂 File Classification
+File Category	File Name Pattern	Destination SQL Table
+Customer Master	CUST_MSTR_YYYYMMDD.csv	CUST_MSTR
+Master-Child Relationship	master_child_export-YYYYMMDD.csv	master_child
+E-Commerce Orders	H_ECOM_ORDER.csv	H_ECOM_Orders
 
----
+✅ Files can have multiple date-stamped versions. All are stored in the Data Lake source container.
 
-## 📦 Supported File Types
+🎯 Purpose of Pipeline
+✔️ Automate Daily Data Loads from Data Lake into SQL tables
 
-| File Type Prefix         | File Pattern                        | Target Table        |
-|--------------------------|-------------------------------------|---------------------|
-| `CUST_MSTR`              | `CUST_MSTR_YYYYMMDD.csv`            | `CUST_MSTR`         |
-| `master_child_export`    | `master_child_export-YYYYMMDD.csv`  | `master_child`      |
-| `H_ECOM_ORDER`           | `H_ECOM_ORDER.csv`                  | `H_ECOM_Orders`     |
+✔️ Transform Data where applicable by enriching with date metadata
 
-> Multiple files may exist for different dates. All files are stored in the Data Lake container.
+✔️ Apply Truncate-Load Strategy for clean daily refresh
 
----
+✔️ Ensure Scalability & Reliability with structured processing
 
-## 🚀 Objective
+📝 Detailed File Processing Rules
+1. 🟦 Customer Master Files
+Pattern: CUST_MSTR_YYYYMMDD.csv
 
-- Ingest and process three categories of files daily.
-- Apply specific transformations based on file type.
-- Load the data into corresponding SQL tables using truncate-load logic.
+Source Directory: /CUST_MSTR/
 
----
+SQL Table: CUST_MSTR
 
-## 🔁 Processing Logic
+Logic:
 
-### 1. **CUST_MSTR Files**
+Extract date from the filename (YYYYMMDD)
 
-- Extract the date from the filename (`YYYYMMDD`) and convert it to `YYYY-MM-DD`.
-- Add this as a new column `Date`.
-- Load the transformed data into the `CUST_MSTR` table.
+Convert it to YYYY-MM-DD and add as Date column
 
----
+Truncate table before load
 
-### 2. **master_child_export Files**
+2. 🟨 Master-Child Relationship Files
+Pattern: master_child_export-YYYYMMDD.csv
 
-- Extract the date from the filename (`YYYYMMDD`).
-- Add two new columns:
-  - `Date` in `YYYY-MM-DD` format.
-  - `DateKey` in `YYYYMMDD` format.
-- Load the transformed data into the `master_child` table.
+Source Directory: /master_child_export/
 
----
+SQL Table: master_child
 
-### 3. **H_ECOM_ORDER Files**
+Logic:
 
-- No transformation required.
-- Load the file as-is into the `H_ECOM_Orders` table.
+Extract date from the filename (YYYYMMDD)
 
----
+Create:
 
-## 🧹 Load Strategy
+Date column → YYYY-MM-DD format
 
-This process follows a **truncate and load** approach:
+DateKey column → YYYYMMDD format
 
-1. Clear existing records in the target table.
-2. Load newly processed data each day.
+Truncate table before load
 
----
+3. 🟩 E-Commerce Orders Files
+Pattern: H_ECOM_ORDER.csv
 
-## 📁 Folder Organization (Data Lake)
+Source Directory: /H_ECOM_ORDER/
 
+SQL Table: H_ECOM_Orders
 
+Logic:
 
+No transformation
 
+Load data as-is
 
+Truncate table before load
 
+🔄 Daily Truncate and Reload Methodology
+All target tables are fully refreshed daily:
 
-> Each folder contains only files relevant to that type. Multiple dated versions of files may exist in the `CUST_MSTR` and `master_child_export` folders.
+✅ Step 1: Truncate table
 
----
+✅ Step 2: Load fresh data
 
-## ⚙️ Processing Logic by File Type
+This ensures:
 
-### 1. **CUST_MSTR Files**
+No data duplication
 
-- **Pattern:** `CUST_MSTR_YYYYMMDD.csv`
-- **Source Folder:** `/CUST_MSTR/`
-- **Target Table:** `CUST_MSTR`
-- **Transformations:**
-  - Extract the date (`YYYYMMDD`) from the filename.
-  - Convert it to `YYYY-MM-DD` format.
-  - Add a new column named `Date` with this value to each row.
-- **Load Type:** Truncate the `CUST_MSTR` table and insert the processed data.
+Clean historical snapshots based on daily loads
 
----
+📌 Operational Assumptions
+Files strictly follow naming conventions and reside in proper directories
 
-### 2. **master_child_export Files**
+All CSV files have headers and valid schemas
 
-- **Pattern:** `master_child_export-YYYYMMDD.csv`
-- **Source Folder:** `/master_child_export/`
-- **Target Table:** `master_child`
-- **Transformations:**
-  - Extract the date (`YYYYMMDD`) from the filename.
-  - Add two columns:
-    - `Date`: in `YYYY-MM-DD` format
-    - `DateKey`: in `YYYYMMDD` format (as integer or string)
-- **Load Type:** Truncate the `master_child` table and insert the processed data.
+The pipeline executes daily on a scheduled trigger
 
----
+Duplicate file handling is managed externally (outside this script)
 
-### 3. **H_ECOM_ORDER Files**
+🧾 Final Output Summary
+File Category	SQL Table	Transformations Applied
+CUST_MSTR	CUST_MSTR	Adds Date column (YYYY-MM-DD)
+master_child_export	master_child	Adds Date (YYYY-MM-DD) and DateKey
+H_ECOM_ORDER	H_ECOM_Orders	No transformation; direct load
 
-- **Pattern:** `H_ECOM_ORDER.csv`
-- **Source Folder:** `/H_ECOM_ORDER/`
-- **Target Table:** `H_ECOM_Orders`
-- **Transformations:**
-  - None. The file is loaded **as-is**.
-- **Load Type:** Truncate the `H_ECOM_Orders` table and insert the raw data.
+🛠️ Tools & Technologies Used
+Azure Data Lake Gen2: Raw data storage layer
 
----
+Azure SQL Database: Destination for processed data
 
-## 🔁 Truncate and Load Strategy
+Apache Spark / PySpark: Data transformation and ingestion engine
 
-Each file type uses the **truncate-load** approach:
+(Optional) Azure Data Factory: Orchestration (if needed)
 
-1. **Truncate** the respective SQL table before ingestion begins.
-2. **Insert** the freshly processed or raw data from the current file(s).
-3. Ensures clean daily refresh and avoids duplication or overlap.
+🗓️ Date Extraction Logic Reference
+File Name Pattern	Extracted Fields
+CUST_MSTR_YYYYMMDD.csv	Date = YYYY-MM-DD
+master_child_export-YYYYMMDD.csv	Date = YYYY-MM-DD, DateKey = YYYYMMDD
+H_ECOM_ORDER.csv	No date extraction
 
-> This method assumes that each day's files contain the full dataset to be stored in the table.
+💡 Best Practices Followed
+✅ Logging Enabled for each processing step
 
----
+✅ Schema Validation before loading to SQL
 
-## 🧠 Assumptions
+✅ Graceful Handling of Unexpected Files
 
-- File names strictly follow the defined naming conventions.
-- All files are properly formatted CSVs with headers.
-- The pipeline runs on a scheduled basis (e.g., daily).
-- All required folders exist in the Data Lake.
-- Duplicate file handling, if needed, should be implemented outside or prior to this process.
-
----
-
-## ✅ Output Summary
-
-| File Prefix          | Target Table      | Required Transformations            |
-|----------------------|-------------------|-------------------------------------|
-| `CUST_MSTR`          | `CUST_MSTR`       | Add `Date` column (YYYY-MM-DD)      |
-| `master_child_export`| `master_child`    | Add `Date` (YYYY-MM-DD), `DateKey` (YYYYMMDD) |
-| `H_ECOM_ORDER`       | `H_ECOM_Orders`   | None                                |
-
----
-
-## 🛠️ Technologies
-
-The pipeline can be implemented using any of the following tools:
-
-- **Azure Data Factory (ADF):** For orchestrating copy activity, data flows, and parameterized pipelines.
-- **Azure Data Lake Storage Gen2:** As the source for raw data.
-- **Azure SQL Database / SQL Server:** As the destination for processed data.
-- **Python / PySpark (Optional):** If additional parsing or preprocessing is required before ADF ingestion.
-
----
-
-## 📅 Date Extraction Logic
-
-| Filename Pattern                     | Extracted Values                   |
-|--------------------------------------|------------------------------------|
-| `CUST_MSTR_YYYYMMDD.csv`             | `Date` = `YYYY-MM-DD`              |
-| `master_child_export-YYYYMMDD.csv`   | `Date` = `YYYY-MM-DD`, `DateKey` = `YYYYMMDD` |
-
-Date values must be extracted from filenames using string manipulation or regex logic, depending on the pipeline's design.
-
----
-
-## 📌 Key Recommendations
-
-- Enable logging for each file processed.
-- Validate schema of each file before loading.
-- Handle unexpected file formats gracefully (e.g., skip or log).
-- Use pipeline parameters to make ingestion logic dynamic and reusable.
-
----
-
-## 📬 Contact
-
-For questions, suggestions, or contributions, feel free to open an issue or submit a pull request.
-
----
-
-
-
-
-
-
-
-
+✅ Reusable Structure for future scalability
